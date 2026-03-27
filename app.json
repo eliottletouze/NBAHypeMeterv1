@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "NBA Hype Meter",
+    "slug": "nba-hype-meter",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#08080f"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nbahypemeter.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#08080f",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.nbahypemeter.app"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "scheme": "nbahypemeter",
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#9B7FFF",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "64f50b00-0032-44a7-8007-69dd1d1af9d5"
+      }
+    }
+  }
+}
