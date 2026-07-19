@@ -44,13 +44,25 @@ function isPlayerInGame(player: Player, homeTeamAbbr: string, awayTeamAbbr: stri
   return player.team === homeTeamAbbr || player.team === awayTeamAbbr;
 }
 
-// Impact réel du joueur : le +/- reflète son influence sur le résultat,
-// bonus pour une grosse ligne de stats (gros scoreur ou double-double).
+// Impact réel du joueur : priorité à la ligne de stats (un gros match individuel
+// compte comme "bon match" même en défaite), le +/- ne sert que d'ajustement mineur.
 function playerImpactScore(stat: PlayerStat): number {
-  let score = 5 + stat.plusMinus / 4;
-  if (stat.pts >= 30) score += 1.5;
-  else if (stat.pts >= 20) score += 0.7;
-  if (stat.ast >= 10 || stat.reb >= 10) score += 0.5;
+  let score: number;
+  if (stat.pts >= 40) score = 9.5;
+  else if (stat.pts >= 30) score = 8.5;
+  else if (stat.pts >= 25) score = 7.5;
+  else if (stat.pts >= 20) score = 6.5;
+  else if (stat.pts >= 15) score = 5.5;
+  else if (stat.pts >= 10) score = 4.5;
+  else score = 3.5;
+
+  const bigCategories = [stat.ast, stat.reb, stat.stl, stat.blk].filter((v) => v >= 10).length;
+  if (bigCategories >= 2) score += 1.5; // triple-double ou presque
+  else if (stat.ast >= 8 || stat.reb >= 8) score += 0.5;
+
+  // Ajustement mineur : ±1 point max, ne renverse jamais une grosse perf individuelle.
+  score += Math.max(-1, Math.min(1, stat.plusMinus / 20));
+
   return Math.min(10, Math.max(0, Math.round(score * 10) / 10));
 }
 
