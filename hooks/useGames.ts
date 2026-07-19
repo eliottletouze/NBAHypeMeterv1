@@ -120,17 +120,23 @@ function fetchWithTimeout(url: string, ms: number): Promise<Response> {
   return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
 }
 
-async function tryFetch(urls: string[], parse: (json: any) => GameData[]): Promise<GameData[]> {
+interface FetchOutcome {
+  games: GameData[];
+  reached: boolean; // true si au moins une source a répondu (même sans match)
+}
+
+async function tryFetch(urls: string[], parse: (json: any) => GameData[]): Promise<FetchOutcome> {
   for (const url of urls) {
     try {
       const res = await fetchWithTimeout(url, 6000);
       if (!res.ok) continue;
       const json = await res.json();
       const games = parse(json);
-      if (games.length > 0) return games; // inclut matchs à venir et terminés
+      if (games.length > 0) return { games, reached: true }; // inclut matchs à venir et terminés
+      return { games: [], reached: true }; // réponse valide, mais aucun match ce jour-là
     } catch {}
   }
-  return [];
+  return { games: [], reached: false };
 }
 
 function parseNbaNetGames(json: any): GameData[] {
@@ -182,19 +188,29 @@ export function useGames(daysAgo: number) {
         ...(daysAgo === 0 ? [[buildNbaUrls(`https://cdn.nba.com/static/json/liveData/scoreboard/todaysScoreboard_00.json`), parseCdnGames]] as [string[], (j: any) => GameData[]][] : []),
       ];
 
+      let reachedAny = false;
       for (const [urls, parse] of sources) {
         const result = await tryFetch(urls, parse);
         if (cancelled) return;
-        if (result.length > 0) {
-          setGames(result);
+        if (result.reached) reachedAny = true;
+        if (result.games.length > 0) {
+          setGames(result.games);
           setLoading(false);
           return;
         }
       }
 
       if (!cancelled) {
-        setGames(FALLBACK_GAMES);
-        setUsingFallback(true);
+        if (reachedAny) {
+          // Au moins une source a répondu : il n'y a simplement aucun match ce jour-là
+          // (ex: intersaison, jour de repos) — ce n'est pas une panne.
+          setGames([]);
+          setUsingFallback(false);
+        } else {
+          // Aucune source n'a pu être jointe : vraie panne réseau, on retombe sur la démo.
+          setGames(FALLBACK_GAMES);
+          setUsingFallback(true);
+        }
         setLoading(false);
       }
     }
