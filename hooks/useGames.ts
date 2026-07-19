@@ -192,11 +192,16 @@ export function useGames(daysAgo: number) {
       for (const [urls, parse] of sources) {
         const result = await tryFetch(urls, parse);
         if (cancelled) return;
-        if (result.reached) reachedAny = true;
         if (result.games.length > 0) {
           setGames(result.games);
           setLoading(false);
           return;
+        }
+        if (result.reached) {
+          // Réponse valide obtenue (même sans match) : c'est une réponse définitive
+          // pour cette date, inutile d'attendre les autres sources (proxys lents/morts).
+          reachedAny = true;
+          break;
         }
       }
 
