@@ -5,8 +5,10 @@ import {
 } from 'react-native';
 import { GameData } from '../hooks/useGames';
 import { Player } from '../data/players';
-import { useGameStats, PlayerStat } from '../hooks/useGameStats';
+import { useGameDetails, PlayerStat } from '../hooks/useGameDetails';
+import { findPlayerStat } from '../utils/matchPlayer';
 import { getTeamLogo } from '../data/teams';
+import { COLORS } from '../constants/theme';
 
 interface Props {
   visible: boolean;
@@ -42,10 +44,11 @@ function StatRow({ stat, isFav = false }: { stat: PlayerStat; isFav?: boolean })
         <Pill value={stat.stl} label="STL" />
         <Pill value={stat.blk} label="BLK" />
       </View>
-      {/* Ligne 2 : FG% 3P% */}
+      {/* Ligne 2 : FG% 3P% +/- */}
       <View style={sr.pillRow}>
         <Pill value={stat.fgPct} label="FG%" />
         <Pill value={stat.fg3Pct} label="3P%" />
+        <Pill value={stat.plusMinus > 0 ? `+${stat.plusMinus}` : stat.plusMinus} label="+/-" />
       </View>
     </View>
   );
@@ -53,7 +56,9 @@ function StatRow({ stat, isFav = false }: { stat: PlayerStat; isFav?: boolean })
 
 export default function ResultModal({ visible, game, favoritePlayers, onClose }: Props) {
   const [confirmed, setConfirmed] = useState(false);
-  const { home: homeStats, away: awayStats, loading } = useGameStats(confirmed ? game.gameId : null);
+  const { details, loading } = useGameDetails(confirmed ? game.gameId : null);
+  const homeStats = details?.home ?? [];
+  const awayStats = details?.away ?? [];
 
   const handleClose = () => {
     setConfirmed(false);
@@ -64,40 +69,9 @@ export default function ResultModal({ visible, game, favoritePlayers, onClose }:
   const top2Away = awayStats.slice(0, 2);
   const top2Home = homeStats.slice(0, 2);
 
-  // Normalise les noms : minuscules, suppression des accents, apostrophes uniformisées
-  function normName(s: string): string {
-    return s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[''`\u2019]/g, "'")
-      .trim();
-  }
-
-  // Map nom normalisé → équipe(s) pour fallback nom de famille + équipe
-  const favFullNames = new Set(favoritePlayers.map(p => normName(p.name)));
-  const favByLastName = new Map<string, Set<string>>();
-  for (const p of favoritePlayers) {
-    const parts = normName(p.name).split(' ');
-    const lastName = parts.slice(1).join(' ');
-    if (lastName.length > 2) {
-      if (!favByLastName.has(lastName)) favByLastName.set(lastName, new Set());
-      favByLastName.get(lastName)!.add(p.team);
-    }
-  }
-
-  function isFavStat(stat: PlayerStat): boolean {
-    const norm = normName(stat.name);
-    if (favFullNames.has(norm)) return true;
-    // Fallback : nom de famille + même équipe (couvre les abréviations ESPN)
-    const lastName = norm.split(' ').slice(1).join(' ');
-    if (lastName.length > 2 && favByLastName.has(lastName)) {
-      return favByLastName.get(lastName)!.has(stat.teamTricode);
-    }
-    return false;
-  }
-
-  const favStats = [...awayStats, ...homeStats].filter(s => isFavStat(s));
+  const favStats = favoritePlayers
+    .map((p) => findPlayerStat(p, [...homeStats, ...awayStats]))
+    .filter((s): s is PlayerStat => !!s);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
@@ -153,7 +127,7 @@ export default function ResultModal({ visible, game, favoritePlayers, onClose }:
               </View>
 
               {loading ? (
-                <ActivityIndicator color="#9B7FFF" style={{ marginVertical: 24 }} />
+                <ActivityIndicator color={COLORS.accent} style={{ marginVertical: 24 }} />
               ) : (
                 <>
 
@@ -203,10 +177,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   box: {
-    backgroundColor: '#0d0d1b',
+    backgroundColor: COLORS.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#1e1e35',
+    borderColor: COLORS.border,
     width: '100%',
     maxHeight: '85%',
     padding: 20,
@@ -217,13 +191,13 @@ const styles = StyleSheet.create({
   warningTitle: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 26,
-    color: '#F5C842',
+    color: COLORS.warning,
     letterSpacing: 2,
   },
   warningBody: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
-    color: '#8080A0',
+    color: COLORS.textDim,
     textAlign: 'center',
     lineHeight: 21,
   },
@@ -231,15 +205,15 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#2e2e50',
+    borderColor: COLORS.borderStrong,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  cancelText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: '#6060A0' },
+  cancelText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: COLORS.textMuted },
   confirmBtn: {
     flex: 1.6,
-    backgroundColor: '#1e1e35',
+    backgroundColor: COLORS.border,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
@@ -247,7 +221,7 @@ const styles = StyleSheet.create({
   confirmText: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 16,
-    color: '#F0F0F5',
+    color: COLORS.textPrimary,
     letterSpacing: 1,
   },
   // Results
@@ -263,27 +237,27 @@ const styles = StyleSheet.create({
   scoreNum: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 48,
-    color: '#2e2e50',
+    color: COLORS.borderStrong,
     lineHeight: 50,
   },
-  winnerNum: { color: '#F0F0F5' },
+  winnerNum: { color: COLORS.textPrimary },
   scoreTricode: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 11,
-    color: '#6060A0',
+    color: COLORS.textMuted,
     textTransform: 'uppercase',
   },
   winBadge: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 10,
-    color: '#9B7FFF',
+    color: COLORS.accent,
     letterSpacing: 1,
     marginTop: 2,
   },
   scoreDash: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 28,
-    color: '#2e2e50',
+    color: COLORS.borderStrong,
     marginHorizontal: 4,
   },
   // Stats
@@ -291,34 +265,34 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 12,
-    color: '#6060A0',
+    color: COLORS.textMuted,
     letterSpacing: 2,
     marginBottom: 10,
   },
   noStats: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 13,
-    color: '#404060',
+    color: COLORS.textFaint,
     textAlign: 'center',
     marginVertical: 16,
   },
   closeBtn: {
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#1e1e35',
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingVertical: 13,
     alignItems: 'center',
   },
-  closeBtnText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: '#6060A0' },
+  closeBtnText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: COLORS.textMuted },
 });
 
 const sr = StyleSheet.create({
   card: {
-    backgroundColor: '#0a0a18',
+    backgroundColor: COLORS.surfaceSunken,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#1a1a30',
+    borderColor: COLORS.border,
     padding: 10,
     marginBottom: 8,
     gap: 8,
@@ -327,14 +301,14 @@ const sr = StyleSheet.create({
   name: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 13,
-    color: '#8080A0',
+    color: COLORS.textDim,
     flex: 1,
   },
-  favName: { color: '#D0D0E8', fontWeight: '600' },
+  favName: { color: COLORS.textSecondary, fontWeight: '600' },
   teamBadge: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 11,
-    color: '#404060',
+    color: COLORS.textFaint,
     letterSpacing: 1,
   },
   pillRow: { flexDirection: 'row', gap: 6 },
@@ -342,14 +316,14 @@ const sr = StyleSheet.create({
   pillVal: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 18,
-    color: '#C0C0D8',
+    color: COLORS.textSecondary,
     lineHeight: 20,
   },
-  pillHighlight: { color: '#9B7FFF' },
+  pillHighlight: { color: COLORS.accent },
   pillLabel: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 8,
-    color: '#404060',
+    color: COLORS.textFaint,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },

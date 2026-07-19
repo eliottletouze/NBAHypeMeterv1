@@ -1,11 +1,12 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, { useSharedValue, useAnimatedProps, useAnimatedStyle, withTiming, withDelay } from 'react-native-reanimated';
 import { GameData } from '../hooks/useGames';
 import { Player } from '../data/players';
 import { getTeam, getTeamLogo } from '../data/teams';
-import { computeHype } from '../utils/hype';
+import { useHypeScore } from '../hooks/useHypeScore';
+import { COLORS } from '../constants/theme';
 import ResultModal from './ResultModal';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -16,9 +17,9 @@ const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 function getRingColor(score: number): string {
-  if (score >= 7) return '#F0F0F5';
-  if (score >= 4) return '#F5C842';
-  return '#E84040';
+  if (score >= 7) return COLORS.textPrimary;
+  if (score >= 4) return COLORS.warning;
+  return COLORS.danger;
 }
 
 function MiniRing({ score }: { score: number }) {
@@ -37,7 +38,7 @@ function MiniRing({ score }: { score: number }) {
   return (
     <View style={miniRingStyles.container}>
       <Svg width={RING_SIZE} height={RING_SIZE}>
-        <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS} stroke="#1e1e35" strokeWidth={RING_STROKE} fill="none" />
+        <Circle cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS} stroke={COLORS.border} strokeWidth={RING_STROKE} fill="none" />
         <AnimatedCircle
           cx={RING_SIZE / 2} cy={RING_SIZE / 2} r={RING_RADIUS}
           stroke={color} strokeWidth={RING_STROKE} fill="none"
@@ -59,7 +60,7 @@ const miniRingStyles = StyleSheet.create({
   container: { width: RING_SIZE, height: RING_SIZE, justifyContent: 'center', alignItems: 'center' },
   center: { position: 'absolute', alignItems: 'center' },
   score: { fontFamily: 'BebasNeue_400Regular', fontSize: 24, lineHeight: 26 },
-  outOf: { fontFamily: 'DMSans_400Regular', fontSize: 9, color: '#6060A0' },
+  outOf: { fontFamily: 'DMSans_400Regular', fontSize: 9, color: COLORS.textMuted },
 });
 
 function MiniBar({ score, delay = 0 }: { score: number; delay?: number }) {
@@ -70,7 +71,7 @@ function MiniBar({ score, delay = 0 }: { score: number; delay?: number }) {
   }, [score]);
 
   const animatedStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` as any }));
-  const color = score >= 7 ? '#F0F0F5' : score >= 4 ? '#F5C842' : '#E84040';
+  const color = score >= 7 ? COLORS.textPrimary : score >= 4 ? COLORS.warning : COLORS.danger;
 
   return (
     <View style={barStyles.track}>
@@ -80,7 +81,7 @@ function MiniBar({ score, delay = 0 }: { score: number; delay?: number }) {
 }
 
 const barStyles = StyleSheet.create({
-  track: { height: 4, backgroundColor: '#1a1a2e', borderRadius: 2, overflow: 'hidden', flex: 1 },
+  track: { height: 4, backgroundColor: COLORS.border, borderRadius: 2, overflow: 'hidden', flex: 1 },
   fill: { height: '100%', borderRadius: 2 },
 });
 
@@ -134,24 +135,19 @@ export default function GameCard({ game, favoritePlayers }: Props) {
 
   const [showResult, setShowResult] = useState(false);
 
-  const hype = useMemo(() => computeHype(
-    game.homeTeam.score, game.awayTeam.score,
-    game.homeTeam.teamTricode, game.awayTeam.teamTricode,
-    favoritePlayers
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [game.gameId, game.homeTeam.score, game.awayTeam.score, game.homeTeam.teamTricode, game.awayTeam.teamTricode, favoritePlayers]);
+  const hype = useHypeScore(game, favoritePlayers);
 
   const diff = Math.abs(game.homeTeam.score - game.awayTeam.score);
   const badges: { label: string; color: string }[] = [];
-  if (diff <= 4) badges.push({ label: '⏱️ OT possible', color: '#E84040' });
-  else if (diff <= 10) badges.push({ label: '🔥 Match serré', color: '#F5C842' });
+  if (game.isOvertime) badges.push({ label: '⏱️ Prolongation', color: COLORS.danger });
+  else if (diff <= 10) badges.push({ label: '🔥 Match serré', color: COLORS.warning });
   for (const p of favoritePlayers) {
     if (p.team === game.homeTeam.teamTricode || p.team === game.awayTeam.teamTricode) {
-      badges.push({ label: `⭐ ${p.name.split(' ')[1] ?? p.name}`, color: '#9B7FFF' });
+      badges.push({ label: `⭐ ${p.name.split(' ')[1] ?? p.name}`, color: COLORS.accent });
     }
   }
 
-  const verdictColor = hype.total >= 8 ? '#F0F0F5' : hype.total >= 6 ? '#F5C842' : hype.total >= 4 ? '#F5C842' : '#404060';
+  const verdictColor = hype.total >= 8 ? COLORS.textPrimary : hype.total >= 6 ? COLORS.warning : hype.total >= 4 ? COLORS.warning : COLORS.textFaint;
   const hasFav = favoritePlayers.some(
     p => p.team === game.homeTeam.teamTricode || p.team === game.awayTeam.teamTricode
   );
@@ -207,20 +203,29 @@ export default function GameCard({ game, favoritePlayers }: Props) {
         </View>
         {hype.overtimeScore > 0 && (
           <View style={styles.barRow}>
-            <Text style={styles.barLabel}>Suspense</Text>
+            <Text style={styles.barLabel}>Prolongation</Text>
             <MiniBar score={hype.overtimeScore} delay={200} />
             <Text style={[styles.barValue, { color: getRingColor(hype.overtimeScore) }]}>{hype.overtimeScore}</Text>
           </View>
         )}
-        {hype.playerScores.filter(({ isPresent }) => isPresent).map(({ player, score }, i) => (
-          <View key={player.id} style={styles.barRow}>
-            <Text style={styles.barLabel} numberOfLines={1}>
-              {`⭐ ${player.name.split(' ')[1] ?? player.name}`}
-            </Text>
-            <MiniBar score={score} delay={300 + i * 80} />
-            <Text style={[styles.barValue, { color: getRingColor(score) }]}>{score}</Text>
+        {hype.incidentScore > 0 && (
+          <View style={styles.barRow}>
+            <Text style={styles.barLabel}>Ambiance</Text>
+            <MiniBar score={hype.incidentScore} delay={250} />
+            <Text style={[styles.barValue, { color: getRingColor(hype.incidentScore) }]}>{hype.incidentScore}</Text>
           </View>
-        ))}
+        )}
+        {hype.playerScores
+          .filter((ps): ps is typeof ps & { score: number } => ps.isPresent && ps.score !== null)
+          .map(({ player, score }, i) => (
+            <View key={player.id} style={styles.barRow}>
+              <Text style={styles.barLabel} numberOfLines={1}>
+                {`⭐ ${player.name.split(' ')[1] ?? player.name}`}
+              </Text>
+              <MiniBar score={score} delay={300 + i * 80} />
+              <Text style={[styles.barValue, { color: getRingColor(score) }]}>{score}</Text>
+            </View>
+          ))}
       </View>
 
       {/* Spoil button */}
@@ -240,10 +245,10 @@ export default function GameCard({ game, favoritePlayers }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#0d0d1b',
+    backgroundColor: COLORS.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1e1e35',
+    borderColor: COLORS.border,
     padding: 16,
     marginBottom: 12,
   },
@@ -255,8 +260,8 @@ const styles = StyleSheet.create({
   },
   teamBlock: { alignItems: 'center', flex: 1 },
   logo: { width: 44, height: 44, marginBottom: 4 },
-  tricode: { fontFamily: 'BebasNeue_400Regular', fontSize: 20, color: '#F0F0F5', letterSpacing: 1 },
-  teamName: { fontFamily: 'DMSans_400Regular', fontSize: 10, color: '#6060A0', textTransform: 'uppercase' },
+  tricode: { fontFamily: 'BebasNeue_400Regular', fontSize: 20, color: COLORS.textPrimary, letterSpacing: 1 },
+  teamName: { fontFamily: 'DMSans_400Regular', fontSize: 10, color: COLORS.textMuted, textTransform: 'uppercase' },
   verdictRow: {
     alignSelf: 'center',
     borderWidth: 1,
@@ -271,27 +276,26 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: 'DMSans_400Regular', fontSize: 10, fontWeight: '600' },
   barsSection: { gap: 8, marginBottom: 10 },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  barLabel: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: '#6060A0', width: 58 },
+  barLabel: { fontFamily: 'DMSans_400Regular', fontSize: 11, color: COLORS.textMuted, width: 58 },
   barValue: { fontFamily: 'BebasNeue_400Regular', fontSize: 13, width: 18, textAlign: 'right' },
-  summary: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: '#505070', lineHeight: 17 },
   spoilBtn: {
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#2e2e50',
+    borderColor: COLORS.borderStrong,
     borderRadius: 10,
     paddingVertical: 10,
     alignItems: 'center',
   },
-  spoilBtnText: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: '#6060A0', fontWeight: '600' },
+  spoilBtnText: { fontFamily: 'DMSans_400Regular', fontSize: 13, color: COLORS.textMuted, fontWeight: '600' },
 });
 
 const upcomingStyles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: 4 },
-  vs: { fontFamily: 'BebasNeue_400Regular', fontSize: 18, color: '#404060', letterSpacing: 2 },
-  time: { fontFamily: 'BebasNeue_400Regular', fontSize: 20, color: '#9B7FFF', letterSpacing: 1 },
-  live: { fontFamily: 'DMSans_400Regular', fontSize: 10, color: '#E84040', fontWeight: '700', letterSpacing: 1 },
-  favBorder: { borderColor: '#9B7FFF' },
+  vs: { fontFamily: 'BebasNeue_400Regular', fontSize: 18, color: COLORS.textFaint, letterSpacing: 2 },
+  time: { fontFamily: 'BebasNeue_400Regular', fontSize: 20, color: COLORS.accent, letterSpacing: 1 },
+  live: { fontFamily: 'DMSans_400Regular', fontSize: 10, color: COLORS.danger, fontWeight: '700', letterSpacing: 1 },
+  favBorder: { borderColor: COLORS.accent },
   favRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  favBadge: { borderWidth: 1, borderColor: '#9B7FFF', borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
-  favBadgeText: { fontFamily: 'DMSans_400Regular', fontSize: 10, color: '#9B7FFF', fontWeight: '600' },
+  favBadge: { borderWidth: 1, borderColor: COLORS.accent, borderRadius: 100, paddingHorizontal: 8, paddingVertical: 3 },
+  favBadgeText: { fontFamily: 'DMSans_400Regular', fontSize: 10, color: COLORS.accent, fontWeight: '600' },
 });

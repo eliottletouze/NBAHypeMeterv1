@@ -8,14 +8,15 @@ export interface GameData {
   gameStatus: number; // 1 = à venir, 2 = en cours, 3 = terminé
   gameStatusText: string;
   gameTime?: string; // heure locale pour les matchs pas encore joués
+  isOvertime: boolean; // vrai si le match est allé en prolongation (period > 4)
 }
 
 const FALLBACK_GAMES: GameData[] = [
-  { gameId: 'fb1', homeTeam: { teamTricode: 'BOS', teamName: 'Celtics', score: 118 }, awayTeam: { teamTricode: 'NYK', teamName: 'Knicks', score: 115 }, gameStatus: 3, gameStatusText: 'Final' },
-  { gameId: 'fb2', homeTeam: { teamTricode: 'LAL', teamName: 'Lakers', score: 127 }, awayTeam: { teamTricode: 'GSW', teamName: 'Warriors', score: 124 }, gameStatus: 3, gameStatusText: 'Final' },
-  { gameId: 'fb3', homeTeam: { teamTricode: 'DEN', teamName: 'Nuggets', score: 135 }, awayTeam: { teamTricode: 'OKC', teamName: 'Thunder', score: 129 }, gameStatus: 3, gameStatusText: 'Final' },
-  { gameId: 'fb4', homeTeam: { teamTricode: 'MIL', teamName: 'Bucks', score: 105 }, awayTeam: { teamTricode: 'MIA', teamName: 'Heat', score: 98 }, gameStatus: 3, gameStatusText: 'Final' },
-  { gameId: 'fb5', homeTeam: { teamTricode: 'PHX', teamName: 'Suns', score: 112 }, awayTeam: { teamTricode: 'DAL', teamName: 'Mavericks', score: 109 }, gameStatus: 3, gameStatusText: 'Final' },
+  { gameId: 'fb1', homeTeam: { teamTricode: 'BOS', teamName: 'Celtics', score: 118 }, awayTeam: { teamTricode: 'NYK', teamName: 'Knicks', score: 115 }, gameStatus: 3, gameStatusText: 'Final', isOvertime: false },
+  { gameId: 'fb2', homeTeam: { teamTricode: 'LAL', teamName: 'Lakers', score: 127 }, awayTeam: { teamTricode: 'GSW', teamName: 'Warriors', score: 124 }, gameStatus: 3, gameStatusText: 'Final', isOvertime: false },
+  { gameId: 'fb3', homeTeam: { teamTricode: 'DEN', teamName: 'Nuggets', score: 135 }, awayTeam: { teamTricode: 'OKC', teamName: 'Thunder', score: 129 }, gameStatus: 3, gameStatusText: 'Final', isOvertime: false },
+  { gameId: 'fb4', homeTeam: { teamTricode: 'MIL', teamName: 'Bucks', score: 105 }, awayTeam: { teamTricode: 'MIA', teamName: 'Heat', score: 98 }, gameStatus: 3, gameStatusText: 'Final', isOvertime: false },
+  { gameId: 'fb5', homeTeam: { teamTricode: 'PHX', teamName: 'Suns', score: 112 }, awayTeam: { teamTricode: 'DAL', teamName: 'Mavericks', score: 109 }, gameStatus: 3, gameStatusText: 'Final', isOvertime: false },
 ];
 
 export function getDateFromDaysAgo(daysAgo: number): Date {
@@ -67,6 +68,7 @@ function parseEspnGames(json: any): GameData[] {
       const completed = comp.status?.type?.completed === true;
       const statusName: string = comp.status?.type?.name ?? '';
       const isLive = statusName.includes('IN_PROGRESS') || statusName.includes('HALF');
+      const isOvertime = (comp.status?.period ?? 0) > 4;
 
       let gameStatus = 1;
       if (completed) gameStatus = 3;
@@ -99,6 +101,7 @@ function parseEspnGames(json: any): GameData[] {
         gameStatus,
         gameStatusText: comp.status?.type?.shortDetail ?? (completed ? 'Final' : 'À venir'),
         gameTime,
+        isOvertime,
       };
     })
     .filter(Boolean) as GameData[];
@@ -148,6 +151,7 @@ function parseNbaNetGames(json: any): GameData[] {
       awayTeam: { teamTricode: g.vTeam.triCode, teamName: g.vTeam.triCode, score: Number(g.vTeam.score) },
       gameStatus: 3,
       gameStatusText: 'Final',
+      isOvertime: false,
     }));
 }
 
@@ -160,6 +164,7 @@ function parseCdnGames(json: any): GameData[] {
       awayTeam: { teamTricode: g.awayTeam.teamTricode, teamName: g.awayTeam.teamName, score: Number(g.awayTeam.score) },
       gameStatus: 3,
       gameStatusText: 'Final',
+      isOvertime: false,
     }));
 }
 

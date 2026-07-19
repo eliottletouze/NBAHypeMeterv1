@@ -4,12 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { useGames, getDateFromDaysAgo, formatDateLabel, GameData } from '../hooks/useGames';
-import { computeHype } from '../utils/hype';
+import { computeHypeQuick } from '../utils/hype';
 import { usePlayers } from '../hooks/usePlayers';
 import { useNBAPlayers } from '../hooks/useNBAPlayers';
 import { useNotifications } from '../hooks/useNotifications';
 import GameCard from '../components/GameCard';
 import PlayerSearch from '../components/PlayerSearch';
+import { COLORS } from '../constants/theme';
 
 const MAX_DAYS_BACK = 14;
 const MAX_DAYS_FORWARD = 7;
@@ -32,9 +33,7 @@ export default function HomeScreen() {
         game,
         finished: game.gameStatus === 3,
         isFav: favTeams.has(game.homeTeam.teamTricode) || favTeams.has(game.awayTeam.teamTricode),
-        hype: game.gameStatus === 3
-          ? computeHype(game.homeTeam.score, game.awayTeam.score, game.homeTeam.teamTricode, game.awayTeam.teamTricode, favoritePlayers).total
-          : -1,
+        hype: game.gameStatus === 3 ? computeHypeQuick(game, favoritePlayers).total : -1,
       }))
       .sort((a, b) => {
         // Matchs terminés avant les matchs à venir
@@ -119,7 +118,7 @@ export default function HomeScreen() {
 
         {loading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator color="#9B7FFF" size="large" />
+            <ActivityIndicator color={COLORS.accent} size="large" />
             <Text style={styles.loadingText}>Chargement...</Text>
           </View>
         ) : sortedGames.length === 0 ? (
@@ -139,20 +138,20 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#08080f' },
+  safe: { flex: 1, backgroundColor: COLORS.bg },
   scroll: { flex: 1 },
-  content: { padding: 20, paddingBottom: 40 },
+  content: { padding: 20, paddingBottom: 40, width: '100%', maxWidth: 560, alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
-  headerTitle: { fontFamily: 'BebasNeue_400Regular', fontSize: 32, color: '#F0F0F5', letterSpacing: 2 },
+  headerTitle: { fontFamily: 'BebasNeue_400Regular', fontSize: 32, color: COLORS.textPrimary, letterSpacing: 2 },
   headerEmoji: { fontSize: 24 },
   dateNav: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0d0d1b',
+    backgroundColor: COLORS.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e1e35',
+    borderColor: COLORS.border,
     paddingHorizontal: 8,
     paddingVertical: 6,
     marginBottom: 20,
@@ -163,25 +162,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
-    backgroundColor: '#131325',
+    backgroundColor: COLORS.surfaceAlt,
   },
   navBtnDisabled: { opacity: 0.25 },
-  navBtnText: { fontFamily: 'BebasNeue_400Regular', fontSize: 26, color: '#D0D0D8', lineHeight: 30 },
+  navBtnText: { fontFamily: 'BebasNeue_400Regular', fontSize: 26, color: COLORS.textSecondary, lineHeight: 30 },
   dateLabel: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
-    color: '#D0D0D8',
+    color: COLORS.textSecondary,
     textTransform: 'capitalize',
     textAlign: 'center',
     flex: 1,
   },
-  divider: { height: 1, backgroundColor: '#1e1e35', marginBottom: 16 },
-  sectionTitle: { fontFamily: 'BebasNeue_400Regular', fontSize: 13, color: '#6060A0', letterSpacing: 2, marginBottom: 12 },
-  banner: { backgroundColor: '#1a1010', borderRadius: 10, padding: 10, marginBottom: 14, borderWidth: 1, borderColor: '#3a1a1a' },
-  bannerText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: '#E84040' },
+  divider: { height: 1, backgroundColor: COLORS.border, marginBottom: 16 },
+  sectionTitle: { fontFamily: 'BebasNeue_400Regular', fontSize: 13, color: COLORS.textMuted, letterSpacing: 2, marginBottom: 12 },
+  banner: { backgroundColor: COLORS.dangerBg, borderRadius: 10, padding: 10, marginBottom: 14, borderWidth: 1, borderColor: COLORS.dangerBorder },
+  bannerText: { fontFamily: 'DMSans_400Regular', fontSize: 12, color: COLORS.danger },
   loadingContainer: { alignItems: 'center', paddingVertical: 40, gap: 12 },
-  loadingText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: '#6060A0' },
+  loadingText: { fontFamily: 'DMSans_400Regular', fontSize: 14, color: COLORS.textMuted },
   emptyContainer: { alignItems: 'center', paddingVertical: 48, gap: 12 },
   emptyEmoji: { fontSize: 40 },
-  emptyText: { fontFamily: 'DMSans_400Regular', fontSize: 15, color: '#6060A0' },
+  emptyText: { fontFamily: 'DMSans_400Regular', fontSize: 15, color: COLORS.textMuted },
 });

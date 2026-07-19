@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Player } from '../data/players';
+import { COLORS } from '../constants/theme';
 
 interface Props {
   allPlayers: Player[];
@@ -65,7 +66,7 @@ export default function PlayerSearch({ allPlayers, loadingPlayers, favoritePlaye
         <TextInput
           style={styles.input}
           placeholder={loadingPlayers ? 'Chargement des joueurs...' : 'Ajouter un joueur...'}
-          placeholderTextColor="#404060"
+          placeholderTextColor={COLORS.textFaint}
           value={query}
           onChangeText={setQuery}
           returnKeyType="search"
@@ -99,6 +100,11 @@ export default function PlayerSearch({ allPlayers, loadingPlayers, favoritePlaye
           ))}
         </View>
       )}
+      {suggestions.length === 0 && query.trim().length >= 2 && !loadingPlayers && (
+        <View style={styles.suggestions}>
+          <Text style={styles.noResults}>Aucun joueur trouvé pour « {query.trim()} »</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -110,7 +116,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 13,
-    color: '#6060A0',
+    color: COLORS.textMuted,
     letterSpacing: 2,
     marginBottom: 12,
   },
@@ -124,32 +130,32 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#131325',
+    backgroundColor: COLORS.surfaceAlt,
     borderRadius: 100,
     paddingLeft: 12,
     paddingRight: 8,
     paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#2e2e50',
+    borderColor: COLORS.borderStrong,
     gap: 8,
   },
   tagText: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 12,
-    color: '#D0D0D8',
+    color: COLORS.textSecondary,
   },
   tagRemove: {
     fontSize: 16,
-    color: '#6060A0',
+    color: COLORS.textMuted,
     lineHeight: 18,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#131325',
+    backgroundColor: COLORS.surfaceAlt,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e1e35',
+    borderColor: COLORS.border,
     paddingHorizontal: 12,
   },
   searchIcon: {
@@ -158,21 +164,21 @@ const styles = StyleSheet.create({
   },
   clearBtn: {
     fontSize: 18,
-    color: '#6060A0',
+    color: COLORS.textMuted,
     paddingHorizontal: 4,
   },
   input: {
     flex: 1,
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
-    color: '#F0F0F5',
+    color: COLORS.textPrimary,
     paddingVertical: 12,
   },
   suggestions: {
-    backgroundColor: '#131325',
+    backgroundColor: COLORS.surfaceAlt,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1e1e35',
+    borderColor: COLORS.border,
     marginTop: 4,
     overflow: 'hidden',
   },
@@ -185,12 +191,12 @@ const styles = StyleSheet.create({
   },
   suggestionBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1a30',
+    borderBottomColor: COLORS.border,
   },
   suggestionName: {
     fontFamily: 'DMSans_400Regular',
     fontSize: 14,
-    color: '#D0D0D8',
+    color: COLORS.textSecondary,
   },
   suggestionMeta: {
     flexDirection: 'row',
@@ -203,7 +209,15 @@ const styles = StyleSheet.create({
   suggestionTeam: {
     fontFamily: 'BebasNeue_400Regular',
     fontSize: 14,
-    color: '#6060A0',
+    color: COLORS.textMuted,
     letterSpacing: 1,
+  },
+  noResults: {
+    fontFamily: 'DMSans_400Regular',
+    fontSize: 13,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 14,
   },
 });

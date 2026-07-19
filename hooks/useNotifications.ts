@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Player } from '../data/players';
 import { GameData } from './useGames';
-import { computeHype } from '../utils/hype';
+import { computeHypeQuick } from '../utils/hype';
 
 const NOTIFIED_KEY = '@nba_hype_notified_v1';
 
@@ -65,13 +65,7 @@ export function useNotifications(
       const notified = await getNotifiedIds();
 
       for (const game of games.filter(g => g.gameStatus === 3)) {
-        const hype = computeHype(
-          game.homeTeam.score,
-          game.awayTeam.score,
-          game.homeTeam.teamTricode,
-          game.awayTeam.teamTricode,
-          favoritePlayers,
-        );
+        const hype = computeHypeQuick(game, favoritePlayers);
 
         // ── 1. Notification "match à ne pas manquer" (hype ≥ 8) ──────────────
         const hypeKey = `hype_${game.gameId}`;
